@@ -1,0 +1,33 @@
+{
+  "name": "cerebrum",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Cerebrum (NEAT-NeuroEvolution of Augmenting Topologies) in Javascript",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack",
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maithanhduyan/neat.git"
+  },
+  "keywords": [
+    "neat",
+    "ai",
+    "javascript"
+  ],
+  "author": "Mai Thành Duy An",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/maithanhduyan/neat/issues"
+  },
+  "homepage": "https://github.com/maithanhduyan/neat#readme",
+  "devDependencies": {
+    "@babel/core": "^7.26.0",
+    "@babel/preset-env": "^7.26.0",
+    "babel-loader": "^9.2.1",
+    "webpack": "^5.95.0",
+    "webpack-cli": "^5.1.4"
+  }
+}
