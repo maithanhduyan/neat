@@ -15,16 +15,16 @@ import Neat from './neat.js'
 import multi from './multithreading/multi.js'
 
 const NeatJS = {
-    methods,
-    Connection,
-    architect:architect,
-    Network,
-    config,
-    Group,
-    Layer,
-    Node,
-    Neat,
-    multi,
+  methods,
+  Connection,
+  architect: architect,
+  Network,
+  config,
+  Group,
+  Layer,
+  Node,
+  Neat,
+  multi,
 };
 
 // 
@@ -53,20 +53,34 @@ setupCounter(document.querySelector('#counter'))
 // import { architect } from "./neataptic";
 
 let network = new NeatJS.architect.Perceptron(2, 4, 1);
-NeatJS.config.warnings = true;
+
+const options1 = {
+  mutation: methods.mutation.ALL,
+  mutationRate: 0.4,
+  clear: true,
+  cost: methods.cost.MSE,
+  error: 0.03,
+  log: 1,
+  iterations: 1000,
+  
+};
+
+// eslint-disable-next-line no-unused-vars
+const options2 = {
+  log: 1,
+  iterations: 1000,
+  error: 0.0001,
+  rate: 0.2
+}
+
 // XOR 
 const trainingSet = [
-    { input: [0, 0], output: [0] },
-    { input: [0, 1], output: [1] },
-    { input: [1, 0], output: [1] },
-    { input: [1, 1], output: [0] }];
+  { input: [0, 0], output: [0] },
+  { input: [0, 1], output: [1] },
+  { input: [1, 0], output: [1] },
+  { input: [1, 1], output: [0] }];
 
-// Train the XOR gate
-network.train(trainingSet, {
-    log: 1,
-    iterations: 1000,
-    error: 0.0001,
-    rate: 0.2
-});
+// Train the XOR gate 
+network.train(trainingSet, options1);
 
 console.log(`network.activate([0, 1]): ${network.activate([0, 1])}`);
