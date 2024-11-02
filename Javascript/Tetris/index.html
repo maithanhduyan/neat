@@ -1,8 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="graph.css">
     <title>Tetris Game</title>
     <style>
         canvas {
@@ -10,11 +13,144 @@
             display: block;
             margin: auto;
         }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
     </style>
     <script src="https://rawgit.com/wagenaartje/neataptic/master/dist/neataptic.js"></script>
 </head>
+
 <body>
     <!-- <canvas id="game"></canvas> -->
     <script type="module" src="src/main.js"></script>
+
+    <script>
+        const { Neat, architect } = window.neataptic;
+        // Khởi tạo mạng lưới Neataptic
+        const neat = new Neat(4, 4, null, { // Đảm bảo neat được khởi tạo trước khi gọi endGeneration
+            mutation: 
+            //neataptic.methods.mutation.ALL,
+            [
+                neataptic.methods.mutation.ADD_CONN,
+                neataptic.methods.mutation.ADD_NODE,
+                neataptic.methods.mutation.MOD_WEIGHT,
+                neataptic.methods.mutation.MOD_BIAS
+            ],
+            popsize: 50,
+            elitism: 5,
+            mutationRate: 0.5,
+            network: new neataptic.architect.Perceptron(4, 8, 4) // 6 input, 12 hidden, 4 output
+        });
+
+
+        neat.mutate();
+        var myPerceptron = new architect.Perceptron(2, 10, 10, 10, 10, 1);
+        console.log(`${JSON.stringify(myPerceptron)}`);
+        
+        // var nodes = JSON.stringify(neat.population[0]);
+        // console.log(`${nodes}`);
+
+        // Lấy thông tin node và connections từ mạng neuron
+        const genome = myPerceptron;
+        const nodes = genome.nodes.map((node, index) => ({
+            id: index,
+            type: node.type
+        }));
+        const links = genome.connections.map(connection => ({
+            source: connection.from,
+            target: connection.to,
+            weight: connection.weight
+        }));
+
+        // Kích thước của SVG
+        const width = 400;
+        const height = 400;
+
+        // Tạo SVG
+        const svg = d3.select("body").append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        // Tạo layout force-directed graph
+        const simulation = d3.forceSimulation(nodes)
+            .force("link", d3.forceLink(links).id(d => d.id).distance(10))
+            .force("charge", d3.forceManyBody().strength(-10))
+            .force("center", d3.forceCenter(width / 2, height / 2));
+
+        // Vẽ đường nối
+        const link = svg.append("g")
+            .selectAll("line")
+            .data(links)
+            .enter().append("line")
+            .attr("class", "link")
+            .style("stroke-width", d => Math.abs(d.weight) * 2);
+
+        // Vẽ các node
+        const node = svg.append("g")
+            .selectAll("circle")
+            .data(nodes)
+            .enter().append("circle")
+            .attr("class", "node")
+            .attr("r", 5)
+            .call(drag(simulation));
+
+        // Thêm nhãn cho các node
+        const label = svg.append("g")
+            .selectAll("text")
+            .data(nodes)
+            .enter().append("text")
+            .attr("dy", ".35em")
+            .text(d => d.type);
+
+        // Hàm cập nhật vị trí cho liên kết và node
+        simulation.on("tick", () => {
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+
+            node
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y);
+
+            label
+                .attr("x", d => d.x + 8)
+                .attr("y", d => d.y);
+        });
+
+        // Kéo thả node
+        function drag(simulation) {
+            function dragstarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            }
+
+            function dragged(event, d) {
+                d.fx = event.x;
+                d.fy = event.y;
+            }
+
+            function dragended(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+            }
+
+            return d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended);
+        }
+    </script>
+
 </body>
+
 </html>

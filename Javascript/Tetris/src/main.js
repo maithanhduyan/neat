@@ -1,5 +1,7 @@
 import Game from './tetris.js';
 
+"use strict"; // Toàn bộ file này sẽ ở chế độ strict mode
+
 class GameGeneration {
 
     constructor() {
@@ -44,10 +46,10 @@ class GameGeneration {
         }
 
         // Tăng tốc games
-        this.increaseSpeedForAllGames(500);
+        this.increaseSpeedForAllGames(600);
 
         // Thực hiện các bước di chuyển của AI cho mỗi game sau mỗi 100ms
-        this.aiInterval = setInterval(() => this.runAIMove(), 100);
+        // this.aiInterval = setInterval(() => this.runAIMove(), this.games[0].speed);
     }
 
     runAIMove() {
@@ -61,7 +63,7 @@ class GameGeneration {
     _createGameCanvas(id) {
         const canvas = document.createElement('canvas');
         canvas.width = 150;
-        canvas.height = 300; // Đặt chiều cao canvas
+        // canvas.height = 300; // Đặt chiều cao canvas
         canvas.id = id;
         canvas.style.border = '1px solid black';
         canvas.style.margin = '5px'; // Thêm khoảng cách giữa các canvas
@@ -100,32 +102,128 @@ class GameGeneration {
     }
 
 }
+
+class NetGraph {
+    constructor(network) {
+        this.network = network; // Mạng neuron để vẽ
+        this.canvas = document.createElement('canvas'); // Tạo canvas
+        this.canvas.id = 'netGraph'
+        this.canvas.width = 400;
+        this.canvas.height = 400;
+        document.body.appendChild(this.canvas);
+        this.ctx = this.canvas.getContext('2d'); // Ngữ cảnh vẽ
+        this.nodePositions = {}; // Lưu trữ vị trí của các node
+
+        this.init();
+    }
+
+    // Khởi tạo các vị trí cho node và thiết lập layout cho mạng
+    init() {
+        // Tính toán số lượng node trong từng lớp
+        const inputLayerSize = this.network.nodes.filter(node => node.type === 'input').length;
+        const hiddenLayerSize = this.network.nodes.filter(node => node.type === 'hidden').length;
+        const outputLayerSize = this.network.nodes.filter(node => node.type === 'output').length;
+
+        // Thiết lập các vị trí x cho các lớp
+        this.layerX = {
+            'input': this.canvas.width * 0.1,
+            'hidden': this.canvas.width * 0.5,
+            'output': this.canvas.width * 0.9
+        };
+
+        // Sắp xếp và lưu vị trí cho từng node trong các lớp
+        this.network.nodes.forEach((node, index) => {
+            const layer = node.type;
+            const layerSize = layer === 'input' ? inputLayerSize : layer === 'hidden' ? hiddenLayerSize : outputLayerSize;
+            const y = (this.canvas.height / (layerSize + 1)) * (index + 1);
+            const x = this.layerX[layer];
+
+            // Lưu lại vị trí node để vẽ kết nối sau
+            this.nodePositions[node.id] = { x, y };
+        });
+    }
+
+    // Phương thức để vẽ các node và kết nối
+    draw() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height); // Xóa canvas trước khi vẽ
+
+        // Vẽ các kết nối
+        this.network.connections.forEach(connection => {
+            if (connection.enabled) { // Chỉ vẽ các kết nối đang hoạt động
+                const fromPos = this.nodePositions[connection.from];
+                const toPos = this.nodePositions[connection.to];
+
+                this.ctx.beginPath();
+                this.ctx.moveTo(fromPos.x, fromPos.y);
+                this.ctx.lineTo(toPos.x, toPos.y);
+                this.ctx.lineWidth = Math.abs(connection.weight) * 2; // Độ dày đường theo trọng số
+                this.ctx.strokeStyle = connection.weight > 0 ? 'green' : 'red'; // Màu sắc: xanh (trọng số dương), đỏ (trọng số âm)
+                this.ctx.stroke();
+            }
+        });
+
+        // Vẽ các node
+        this.network.nodes.forEach(node => {
+            const pos = this.nodePositions[node.id];
+            this.ctx.beginPath();
+            this.ctx.arc(pos.x, pos.y, 5, 0, Math.PI * 2); // Vẽ node dưới dạng vòng tròn
+            this.ctx.fillStyle = node.type === 'input' ? 'green' : node.type === 'output' ? 'red' : 'blue';
+            this.ctx.fill();
+            this.ctx.stroke();
+        });
+    }
+
+    // Phương thức cập nhật mạng, nếu cần thiết
+    update(network) {
+        this.network = network;
+        // Thực hiện bất kỳ cập nhật nào nếu có, sau đó vẽ lại mạng
+        this.draw();
+    }
+
+    clear() {
+        // Tìm và xóa container có id là 'netGraph'
+        const container = document.getElementById('netGraph');
+        if (container) {
+            container.remove(); // Xóa container và tất cả các phần tử con bên trong
+        }
+    }
+}
+
 ///////////////////////////////////////////////////////
 const AI_NUM = 50;
 const ELITISM_NUM = 0.1 * AI_NUM; // 10%
-const { Neat, architect } = window.neataptic;
+const { Neat } = window.neataptic;
 
-const neat = new Neat(20, 40, null, { // Đảm bảo neat được khởi tạo trước khi gọi endGeneration
+const neat = new Neat(20, 4, null, { // Đảm bảo neat được khởi tạo trước khi gọi endGeneration
     mutation: neataptic.methods.mutation.ALL,
     popsize: AI_NUM,
     elitism: ELITISM_NUM,
-    mutationRate: 0.3,
-    network: new neataptic.architect.Perceptron(20, 40, 4) // 6 input, 12 hidden, 4 output
+    mutationRate: 0.5,
+    network: new neataptic.architect.Perceptron(20, 15, 4) // 6 input, 12 hidden, 4 output
 });
 
 // Khởi tạo một thế hệ mới
 let gg;
+let bestGenome = neat.population[0];
+// let netGraph = new NetGraph(bestGenome);
+
 function startGeneration() {
-    console.log(` Thế hệ thứ: ${neat.generation}`);
+    // console.log(` Thế hệ thứ: ${neat.generation}`);
+
+    //
     gg = new GameGeneration();
     gg.start(neat);
+    //
+
+    // Bắt đầu game
     const gameOverInterval = setInterval(() => {
         if (gg.checkGameOver()) {
-            clearInterval(gameOverInterval);
+            clearInterval(gameOverInterval);// stop timer
             console.log("All Game Over!");
             neat.sort();
             console.log(`Điểm cao nhất của thế hệ này là: ${neat.population[0].score} `);
-            
+            bestGenome = neat.population[0];
+            console.log(bestGenome);
             endGeneration();
         }
     }, 100);
@@ -133,6 +231,7 @@ function startGeneration() {
 
 // Kết thúc một thế hệ
 function endGeneration() {
+
     // sắp xếp các genome có điểm cao
     neat.sort();
     // Cập nhật dân số cho thế hệ tiếp theo
@@ -145,9 +244,14 @@ function endGeneration() {
     neat.population = newPopulation;
     neat.mutate(); // Đột biến
     neat.generation++; // Đếm thứ tự tăng dần qua các thế hệ 
-    
+
     startGeneration();
 }
 
 // Start Loop
-startGeneration();
+document.addEventListener("DOMContentLoaded", function () {
+    // Mã JavaScript ở đây sẽ được thực thi khi tài liệu đã sẵn sàng.
+    console.log("Document Ready!");
+    startGeneration();
+});
+

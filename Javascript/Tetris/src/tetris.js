@@ -107,18 +107,33 @@ class Game {
         const inputs = [];
 
         // Tổng chiều cao của các cột
-        inputs.push(this.calculateTotalHeight());
+        // inputs.push(this.calculateTotalHeight());
 
         // Số hàng hoàn chỉnh
-        inputs.push(this.calculateCompleteLines());
+        // inputs.push(this.calculateCompleteLines());
 
         // Số lỗ hổng trên bảng
-        inputs.push(this.calculateHoles());
+        // inputs.push(this.calculateHoles());
 
         // Độ gồ ghề của các cột
-        inputs.push(this.calculateBumpiness());
+        // inputs.push(this.calculateBumpiness());
+
+        // Chuyển đổi toàn bộ mảng board thành nhị phân và thêm vào đầu vào
+        const boardState = this.getBoardBinaryState();
+        inputs.push(...boardState);
 
         return inputs;
+    }
+
+    // Chuyển đổi trạng thái board thành nhị phân
+    getBoardBinaryState() {
+        const binaryState = [];
+        for (let y = 0; y < this.boardHeight; y++) {
+            for (let x = 0; x < this.boardWidth; x++) {
+                binaryState.push(this.board.grid[y][x] === 0 ? 0 : 1);
+            }
+        }
+        return binaryState;
     }
 
     // Tính tổng chiều cao các cột
@@ -345,6 +360,8 @@ class Game {
         const clearedRows = this.board.clearRows();
         this.increaseScore(clearedRows);
         this.currentPiece = this.randomPiece();
+        this.score++;
+        this.brain.score = this.score; // Gán điểm số của trò chơi cho genome
 
         // Kiểm tra nếu game over
         if (!this.board.isInside(this.currentPiece)) {
@@ -367,30 +384,13 @@ class Game {
         this.context.fillText("Press F5 to Restart", this.boardAreaWidth / 2, this.canvas.height / 2 + this.cellSize * 2);
     }
 
-    // Cập nhật điểm số cho genome khi trò chơi kết thúc
-    endGame() {
-        this.isGameOver = true;
-        if (this.brain) {
-            this.brain.score = this.score; // Gán điểm số của trò chơi cho genome
-        }
-    }
-    
-    // Kiểm tra xem game có kết thúc không
-    checkGameOver() {
-        // Logic kiểm tra nếu game over
-        return this.isGameOver;
-    }
-
     increaseScore(clearedRows) {
-        this.score += clearedRows;
+        this.score += clearedRows * 2;
+        this.brain.score += 10;
         if (clearedRows > 0 && this.score % 500 === 0) {
-            this.speed *= 0.1;
+            // this.speed *= 0.1;
             clearInterval(this.interval);
             this.interval = setInterval(() => this.update(), this.speed);
-        }
-
-        if (this.checkGameOver()) {
-            this.endGame(); // Kết thúc trò chơi nếu điều kiện game over đạt
         }
 
         this.updateDisplay();
@@ -398,6 +398,11 @@ class Game {
 
     update() {
         this.drop();
+        //
+        const inputs = this.getInputs(); // Lấy đầu vào từ game
+        const outputs = this.brain.activate(inputs); // Tính toán đầu ra từ mạng neuron
+        this.makeMove(outputs); // Thực hiện hành động dựa trên đầu ra của mạng neuron
+        //
         this.updateDisplay();
     }
 
@@ -410,6 +415,7 @@ class Game {
         if (rotate > 0.5) this.rotate();
         if (drop > 0.5) this.drop();
     }
+
 }
 
 
